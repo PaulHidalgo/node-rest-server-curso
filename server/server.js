@@ -11,15 +11,15 @@ const app = express();
  * Middleware
  */
 // parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.urlencoded({extended: false}));
 
 // parse application/json
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 // hablitar la carpeta pública
-app.use(express.static(path.resolve( __dirname , '../public')))
+app.use(express.static(path.resolve(__dirname, '../public')));
 
-//COnfiguración global de rutas
+//Configuración global de rutas
 app.use(require('./controladores/index'));
 
 mongoose.connect(process.env.URLDB, (err, res) => {

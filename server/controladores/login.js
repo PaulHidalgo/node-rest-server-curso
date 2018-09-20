@@ -9,49 +9,49 @@ const client = new OAuth2Client(process.env.CLIENT_ID);
 const Usuario = require('../models/usuario');
 const app = express();
 
-app.post('/login',(req,res)=>{
+app.post('/login', (req, res) => {
 
-let body =req.body;
+    let body = req.body;
 
-Usuario.findOne({email:body.email},(err,userDB)=>{
-    
-    if (err) {
-        return res.status(500).json({
-            ok: false,
-            err
+    Usuario.findOne({email: body.email}, (err, userDB) => {
+
+        if (err) {
+            return res.status(500).json({
+                ok: false,
+                err
+            });
+        }
+
+        if (!userDB) {
+            return res.status(200).json({
+                ok: false,
+                err: {
+                    message: '(Usuario) o contraseña inconrrectos'
+                }
+            });
+        }
+
+        if (!bcrypt.compareSync(body.password, userDB.password)) {
+            return res.status(200).json({
+                ok: false,
+                err: {
+                    message: 'Usuario o (contraseña) inconrrectos'
+                }
+            });
+        }
+
+        let token = jwt.sign({
+            usuario: userDB
+        }, process.env.SEED, {expiresIn: process.env.CADUCIDAD_TOKEN})
+
+        res.json({
+            ok: true,
+            usuario: userDB,
+            token
+
         });
-    }
 
-    if(!userDB){
-        return res.status(200).json({
-            ok: false,
-            err:{
-                message:'(Usuario) o contraseña inconrrectos'
-            }
-        });
-    }
-
-    if(!bcrypt.compareSync(body.password,userDB.password)){
-        return res.status(200).json({
-            ok: false,
-            err:{
-                message:'Usuario o (contraseña) inconrrectos'
-            }
-        });
-    }
-
-    let token= jwt.sign({
-        usuario:userDB
-    },process.env.SEED,{expiresIn:process.env.CADUCIDAD_TOKEN})
-
-    res.json({
-        ok:true,
-        usuario:userDB,
-        token
-
-    });
-
-})
+    })
 })
 
 //Configuraciones de Google
@@ -63,88 +63,90 @@ async function verify(token) {
         //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
     });
     const payload = ticket.getPayload();
-    
+
     return {
-        nombre:payload.name,
-        email:payload.email,
-        img:payload.picture,
-        google:true
+        nombre: payload.name,
+        email: payload.email,
+        img: payload.picture,
+        google: true
     }
-  }
+}
 
-app.post('/google',async (req,res)=>{
+app.post('/google', async (req, res) => {
 
-    let token=req.body.idtoken
+    let token = req.body.idtoken
 
-   let googleUser=await verify(token)
-   .catch(err=>{
-       return Response.status(403).json({
-           ok:false,
-           err
-       });
-   })
-
-   Usuario.findOne({email:googleUser.email},(err,usuarioDB)=>{
-        
-    if (err) {
-            return res.status(500).json({
+    let googleUser = await verify(token)
+        .catch(err => {
+            return Response.status(403).json({
                 ok: false,
                 err
             });
-    };
+        })
 
-    if(usuarioDB) {
-        if (usuarioDB.google===false) {
-            return res.status(200).json({
-                ok: false,
-                err:{
-                    message: 'Debe usar su atenticación normal'
-                }
-            });
-        } else {
-            let token= jwt.sign({
-                usuario:usuarioDB
-            },process.env.SEED,{expiresIn:process.env.CADUCIDAD_TOKEN});
+    Usuario.findOne({email: googleUser.email}, (err, usuarioDB) => {
 
-            return res.json({
-                ok:true,
-                usuario:usuarioDB,
-                token
-            });
-        }
-    } else {
-        //Si el usuario no existe en la base de datos
-
-        let usuario=new Usuario();
-        usuario.nombre=googleUser.nombre;
-        usuario.email=googleUser.email;
-        usuario.img=googleUser.img;
-        usuario.google=true;
-        usuario.password=':)';
-
-        usuario.save((err,usuarioDB)=>{
-            
         if (err) {
             return res.status(500).json({
                 ok: false,
                 err
             });
-        };
-        
-        let token= jwt.sign({
-            usuario:usuarioDB
-        },process.env.SEED,{expiresIn:process.env.CADUCIDAD_TOKEN});
+        }
+        ;
 
-        return res.json({
-            ok:true,
-            usuario:usuarioDB,
-            token
-        });
+        if (usuarioDB) {
+            if (usuarioDB.google === false) {
+                return res.status(200).json({
+                    ok: false,
+                    err: {
+                        message: 'Debe usar su atenticación normal'
+                    }
+                });
+            } else {
+                let token = jwt.sign({
+                    usuario: usuarioDB
+                }, process.env.SEED, {expiresIn: process.env.CADUCIDAD_TOKEN});
 
-        });
-    }
+                return res.json({
+                    ok: true,
+                    usuario: usuarioDB,
+                    token
+                });
+            }
+        } else {
+            //Si el usuario no existe en la base de datos
 
-   });
+            let usuario = new Usuario();
+            usuario.nombre = googleUser.nombre;
+            usuario.email = googleUser.email;
+            usuario.img = googleUser.img;
+            usuario.google = true;
+            usuario.password = ':)';
+
+            usuario.save((err, usuarioDB) => {
+
+                if (err) {
+                    return res.status(500).json({
+                        ok: false,
+                        err
+                    });
+                }
+                ;
+
+                let token = jwt.sign({
+                    usuario: usuarioDB
+                }, process.env.SEED, {expiresIn: process.env.CADUCIDAD_TOKEN});
+
+                return res.json({
+                    ok: true,
+                    usuario: usuarioDB,
+                    token
+                });
+
+            });
+        }
+
+    });
 
 })
 
